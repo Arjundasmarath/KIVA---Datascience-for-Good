@@ -1,3 +1,4 @@
+
 # KIVA---Datascience-for-Good
 
 Kiva Microfunds (commonly known by its domain name, Kiva.org) is a 501(c)(3) non-profit organization that allows people to lend money via the Internet to low-income entrepreneurs and students in over 80 countries. Kiva’s mission is “to connect people through lending to alleviate poverty.Kiva operates two models—Kiva.org and KivaZip.org. Kiva.org relies on a network of field partners to administer the loans on the ground.Kiva is headquartered in San Francisco, California
@@ -15,3 +16,5 @@ Kernels submitted will be evaluated based on the following criteria:
 3. Ingenuity - While there are many best practices to learn from in the field, there is no one way of using data to assess welfare levels. It’s a challenging, nuanced field and participants should experiment with new methods and diverse datasets.
 
 https://www.kaggle.com/arjundas/simpleanalysis-for-kiva-its-time-for-africa
+
+https://www.kaggle.com/arjundas/how-happy-kiva-is
