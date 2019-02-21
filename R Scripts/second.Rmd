@@ -1,0 +1,245 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(readr)
+
+packages <- c("data.table", "ggplot2", "dplyr", "mosaic", "magrittr", 
+              "grid", "cowplot", "gridExtra", "corrplot",
+             "RColorBrewer", "gmodels")
+lapply(packages, require, character.only = T)
+library(tidyverse) #  data manipulation and graphs
+library(lubridate) #  date manipulation
+library(wordcloud) #  wordcloud
+library(tidytext) # tidy implementation of NLP methods
+library(DT)       # table format display of data
+library(leaflet) # maps
+
+library(igraph) #  graphs
+library(ggraph) #  graphs
+
+```
+
+
+```{r}
+loans <- read_csv("kiva_loans.csv")
+location <- read_csv("kiva_mpi_region_locations.csv")
+loan_theme <-  read_csv("loan_theme_ids.csv")
+loan_themes_region <- read_csv("loan_themes_by_region.csv")
+
+ 
+```
+
+#### Null Values in loans
+
+```{r}
+x<- colMeans(is.na(loans))
+distribution<- x[x>0]
+t<-data.frame(distribution)
+
+colnames(t) <- "Percentage"
+t$Percentage <- t$Percentage *100
+
+require('DT')
+    d = data.frame(
+      t,
+      stringsAsFactors = TRUE
+    )
+    dt <- datatable(d, filter = 'bottom', options = list(pageLength = 8))
+    dt
+    
+
+```
+
+#### Null Values in loan_theme
+
+```{r}
+x<- colMeans(is.na(loan_theme))
+distribution<- x[x>0]
+t<-data.frame(distribution)
+
+colnames(t) <- "Percentage"
+t$Percentage <- t$Percentage *100
+
+require('DT')
+    d = data.frame(
+      t,
+      stringsAsFactors = TRUE
+    )
+    dt <- datatable(d, filter = 'bottom', options = list(pageLength = 8))
+    dt
+    
+```
+
+####Null Values in Location
+
+```{r}
+x<- colMeans(is.na(location))
+distribution<- x[x>0]
+t<-data.frame(distribution)
+
+colnames(t) <- "Percentage"
+t$Percentage <- t$Percentage *100
+
+require('DT')
+    d = data.frame(
+      t,
+      stringsAsFactors = TRUE
+    )
+    dt <- datatable(d, filter = 'bottom', options = list(pageLength = 8))
+    dt
+    
+```
+
+```{r}
+loans %>%
+  group_by(country) %>%
+  summarise(Count = n()) %>%
+  arrange(desc(Count)) %>%
+  ungroup() %>% 
+  mutate(country = reorder(country,Count)) %>%
+  head(10) %>%
+    
+ ggplot(aes(x = country,y = Count)) +
+  geom_bar(stat='identity',colour="white",fill = " dark green") +
+  geom_text(aes(x = country, y = 1, label = paste0("(",Count,")",sep="")),
+            hjust=0, vjust=.5, size = 4, colour = 'black',
+            fontface = 'bold') +
+  labs(x = 'country', 
+       y = 'Count' 
+       ) +
+ 
+   theme_light()
+
+
+  
+
+
+```
+
+
+
+```{r somevar22,echo=FALSE}
+table_loan_sector <- table(loans$sector )
+names_loan_sector <- row.names(table_loan_sector)
+
+m = list(
+  l = 200,
+  r = 40,
+  b = 100,
+  t = 50,
+  pad = 10
+) 
+
+data <- data.frame(names_loan_sector, table_loan_sector)
+
+p <- plot_ly(data, x = ~names_loan_sector, y = ~table_loan_sector, type = 'bar',
+        marker = list(color = 'rgb(158,202,225)',
+                      line = list(color = 'rgb(8,48,107)',
+                                  width = 1.5))) %>%
+  layout(title = "Sector  Analysis",
+         xaxis = list(title = ""),
+         yaxis = list(title = ""))
+p %>% layout(autosize = F, margin = m)
+
+```
+
+```{r}
+
+```
+
+
+```{r}
+ k<- data.frame(table(loans$country[loans$borr == "female"]))
+
+
+p <- plot_ly(k, labels = ~Var1, values = ~Freq, type = 'pie') %>%
+  layout(title = 'Countries who took loan by female customers',
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+p
+```
+
+```{r}
+
+```
+
+
+```{r}
+ k<- data.frame(table(loans$country[loans$borr == "female"]))
+
+
+p <- plot_ly(k, labels = ~Var1, values = ~Freq, type = 'pie') %>%
+  layout(title = 'Countries who took loan by female borrowers',
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+p
+```
+
+
+
+
+```{r}
+
+ k<- data.frame(table(loans$country[loans$repayment_interval == "irregular"]))
+
+
+p <- plot_ly(k, labels = ~Var1, values = ~Freq, type = 'pie') %>%
+  layout(title = 'Countries who took loan by irregular repayment interval',
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+p
+```
+
+```{r}
+
+ k<- data.frame(table(loans$country[loans$repayment_interval == "monthly"]))
+
+
+p <- plot_ly(k, labels = ~Var1, values = ~Freq, type = 'pie') %>%
+  layout(title = 'Countries who took loan by monthly repayment interval',
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+p
+```
+
+
+```{r}
+ k<- data.frame(table(loans$country[loans$repayment_interval == "bullet"]))
+
+
+p <- plot_ly(k, labels = ~Var1, values = ~Freq, type = 'pie') %>%
+  layout(title = 'Countries who took loan by bullet repayment interval',
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+p
+```
+
+#### MAPS,MAPS...Here i come
+```{r}
+top10 <- droplevels(tail(as.factor(loans$country),10))
+top10_loans <- loans[loans$country %in% top10,]
+top10_loans$country <- as.factor(top10_loans$country)
+top10_loans$sector <- as.factor(top10_loans$sector)
+
+ggplot(top10_loans, aes(country)) +
+  geom_bar(aes(fill=sector), width = 0.8, col='black') + theme(axis.text.x = element_text(angle=65, vjust=0.6))
+
+```
+
+```{r}
+loans %>%
+  mutate( fill = as.factor(sector)) %>%
+      ggplot(aes(x = sector, y= funded_amount, fill = sector)) +
+      scale_y_log10(
+      breaks = scales::trans_breaks("log10", function(x) 10^x),
+      labels = scales::trans_format("log10", scales::math_format(10^.x))
+    ) +
+      geom_boxplot() +
+      labs(x= 'Sector Type',y = 'Funded Amount', 
+           title = paste("Distribution of", ' Funded Amount ')) +
+       theme_bw() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+

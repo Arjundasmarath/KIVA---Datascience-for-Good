@@ -1,0 +1,1336 @@
+---
+title: "KIVA Analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+####**KIVA** - AN INTRODUCTION
+
+
+   Kiva Microfunds (commonly known by its domain name, Kiva.org) is a 501(c)(3) non-profit organization that allows people to lend money via the Internet to low-income entrepreneurs and students in over 80 countries. Kiva's mission is "to connect people through lending to alleviate poverty.Kiva operates two models-Kiva.org and KivaZip.org. Kiva.org relies on a network of field partners to administer the loans on the ground.Kiva is headquartered in San Francisco, California.
+   
+***
+***
+#### OBJECTIVE
+
+Estimation of Welfare Level of Borrowers Categorized on the Basis of Areas Classified By Shared Economic And Demographic Characterstics
+
+
+***
+***   
+#### OBJECTIVE OF NOTEBOOK
+
+  An analysis of the data provided by **KIVA** encompassing detailed discussion of ideas for aditional data sources, by supportive usage of graphs and plots to make the results more interactive.
+
+***
+***
+ 
+#### A Note from a Beginner
+
+  As a new member in the community of **Kaggle** this is my first Kernel. While best efforts have been put to avoid any form of misinterpretation of data,inadvertent errors might have crept in. Constructive criticisms and honest reviews are widely welcomed.  
+
+***
+***          
+
+
+#### Libraries 
+
+```{r libraries}
+library(readr)
+
+packages <- c("data.table", "ggplot2", "dplyr", "mosaic", "magrittr", 
+              "grid", "cowplot", "gridExtra", "corrplot",
+             "RColorBrewer", "gmodels")
+lapply(packages, require, character.only = T)
+library(wordcloud) #  wordcloud
+library(DT)       # table format display of data
+library(leaflet) # maps
+
+library(igraph) #  graphs
+library(plotly)
+```
+
+
+#### Loading the dataset
+
+```{r}
+loans <- read_csv("kiva_loans.csv")
+location <- read_csv("kiva_mpi_region_locations.csv")
+loan_theme <-  read_csv("loan_theme_ids.csv")
+loan_themes_region <- read_csv("loan_themes_by_region.csv")
+
+african_conflicts <- read_csv("D:/kaggle/KIVA/data-science-for-good-kiva-crowdfunding/african_conflicts.csv")
+countries_and_continents <- read_csv("countries and continents.csv")
+Countries_Longitude_and_Latitude <- read_csv("D:/kaggle/KIVA/data-science-for-good-kiva-crowdfunding/Countries Longitude and Latitude.csv")
+
+FINDEXData <- read_csv("D:/kaggle/KIVA/data-science-for-good-kiva-crowdfunding/FINDEXData.csv")
+
+MPI_national <- read_csv("D:/kaggle/KIVA/data-science-for-good-kiva-crowdfunding/MPI_national.csv")
+MPI_subnational <- read_csv("D:/kaggle/KIVA/data-science-for-good-kiva-crowdfunding/MPI_subnational.csv")
+```
+
+#### Null Value Identifications
+
+ To avoid discrepancies in the analysis of data,identification of null values in the dataset is necessary.The table below shows the attributes with the percentage of null values it contains.
+
+<br>
+
+#### Null Value identifications in loans
+
+
+```{r}
+x<- colMeans(is.na(loans))
+distribution<- x[x>0]
+t<-data.frame(distribution)
+
+colnames(t) <- "Percentage"
+t$Percentage <- t$Percentage *100
+
+    d = data.frame(
+      t,
+      stringsAsFactors = TRUE
+    )
+    dt <- datatable(d, filter = 'bottom', options = list(pageLength = 8))
+    dt
+    
+
+```
+
+
+#### Null Value identification in loan_theme
+
+```{r}
+x<- colMeans(is.na(loan_theme))
+distribution<- x[x>0]
+t<-data.frame(distribution)
+
+colnames(t) <- "Percentage"
+t$Percentage <- t$Percentage *100
+
+require('DT')
+    d = data.frame(
+      t,
+      stringsAsFactors = TRUE
+    )
+    dt <- datatable(d, filter = 'bottom', options = list(pageLength = 8))
+    dt
+    
+```
+
+
+
+####Null Values in Location
+
+```{r}
+x<- colMeans(is.na(location))
+distribution<- x[x>0]
+t<-data.frame(distribution)
+
+colnames(t) <- "Percentage"
+t$Percentage <- t$Percentage *100
+
+require('DT')
+    d = data.frame(
+      t,
+      stringsAsFactors = TRUE
+    )
+    dt <- datatable(d, filter = 'bottom', options = list(pageLength = 8))
+    dt
+    
+```
+
+
+#### The Grant of Loans - Country Specific
+
+```{r}
+loans %>%
+  group_by(country) %>%
+  filter()
+  summarise(Count = n()) %>%
+  arrange(desc(Count)) %>%
+  ungroup() %>% 
+  mutate(country = reorder(country,Count)) %>%
+  head(10) %>%
+    
+ ggplot(aes(x = country,y = Count)) +
+  geom_bar(stat='identity',colour="white",fill = " dark green") +
+  geom_text(aes(x = country, y = 1, label = paste0("(",Count,")",sep="")),
+            hjust=0, vjust=.5, size = 4, colour = 'black',
+            fontface = 'bold') +
+  labs(x = 'country', 
+       y = 'Count' 
+       ) +
+ 
+   theme_light()
+
+
+  
+
+
+```
+
+
+
+As a result of the analysis it is evident that **Phillipines** is the country which ranks highest among the brrower of loans.
+ 
+***
+
+***
+
+####Sector Wise Analysis on the Basis of Amount of Loans
+
+```{r somevar22,echo=FALSE}
+table_loan_sector <- table(loans$sector )
+names_loan_sector <- row.names(table_loan_sector)
+
+m = list(
+  l = 200,
+  r = 40,
+  b = 100,
+  t = 50,
+  pad = 10
+) 
+
+data <- data.frame(names_loan_sector, table_loan_sector)
+
+p <- plot_ly(data, x = ~names_loan_sector, y = ~table_loan_sector, type = 'bar',
+        marker = list(color = 'rgb(158,202,225)',
+                      line = list(color = 'rgb(108,48,107)',
+                                  width = 1.5))) %>%
+  layout(title = "Sector  Analysis",
+         xaxis = list(title = ""),
+         yaxis = list(title = ""))
+p %>% layout(autosize = F, margin = m)
+
+```
+
+
+From the given dataset the sectors of **Agriculture** and **Food** hold the top positions in terms of borrowing of loans.
+
+***
+
+***
+
+
+### Basic barplots
+```{r}
+par(mfrow=c(1,3))
+hist(loans$funded_amount, col="green")
+hist(loans$loan_amount, col="red")
+hist(loans$term_in_months, col="blue")
+```
+
+***
+
+**Summary**: Let's examine the distribution on some of the loans features. Here's what I found:
+
+* ***Funded Amount*** -  There is a huge spike for funded amounts in the first quarter.
+
+* ***Loan Amount*** -  Loan Amount has a simillar spike as that of funded amount.
+
+* ***Terms in Months*** -  There is a huge spike for loans in the initial months which is between 0 and 25
+
+
+***
+### Funded Amount
+```{r}
+table_term_month <- table(loans$funded_amount )
+names_term_month <- row.names(table_term_month)
+
+
+data <- data.frame(names_term_month, table_term_month)
+
+p <- plot_ly(data, x = ~names_term_month, y = ~table_term_month, type = 'bar',
+        marker = list(color = 'rgb(158,202,225)',
+                      line = list(color = 'rgb(8,48,107)',
+                                  width = 1.5))) %>%
+  layout(title = "Fundeed Amount Analysis",
+         xaxis = list(title = ""),
+         yaxis = list(title = ""))
+p
+```
+
+***
+
+**Summary**: Let's examine the funded amount that being distributed:
+
+* ***Funded Amount*** -  The initial quarter has the big crowd.
+
+
+
+####Analysis of Loans - Gender Based. 
+
+```{r}
+ loans$borr <- if_else((loans$borrower_genders == "female"), "female","male")
+ k<- data.frame(table(loans$country[loans$borr == "female"]))
+
+ k<-as.data.frame(table(loans$borr))
+
+p <- plot_ly(k, labels = ~Var1, values = ~Freq, type = 'pie') %>%
+  layout(
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+p
+```
+
+
+***
+
+**Summary**: Let's examine the distribution  of the loans on basis of Gender:
+
+* ***Female*** wins it all with a whopping 63.9 % .
+
+* ***Male*** with a 240,482 numbers could contribute upto 36% of whole population of borrowers.
+
+***Why it would be?*** :  
+ 
+* Is ***Female*** are getting any particular privilleges than the counter part. 
+  IS ***KIVA*** being Partial ? Or Just Coincidence?
+
+
+***
+
+### Drill down on Female Category
+
+
+
+```{r}
+
+
+library(dplyr)
+x<- data.frame(table(loans$country[loans$borr == "female"]) )
+k<- data.frame(table(loans$country))
+innerjoin_RM <- merge(x,k,by = "Var1")
+
+
+names_RM <- innerjoin_RM$Var1
+
+text <- round( (innerjoin_RM$Freq.x/ innerjoin_RM$Freq.y)*100,digits = 2)
+text <- paste(text, "%Female" )
+
+data <- data.frame(names_RM, innerjoin_RM$Freq.x, innerjoin_RM$Freq.y - innerjoin_RM$Freq.x)
+
+p <- plot_ly(data, x = ~names_RM, y = ~innerjoin_RM$Freq.x, type = 'bar', text = text ,name = 'Female') %>%
+  add_trace(y = ~innerjoin_RM$Freq.y - innerjoin_RM$Freq.x, name = 'Male') %>%
+  layout(margin = list(b = 160),yaxis = list(title = 'Count'), barmode = 'stack')
+p
+
+
+```
+
+
+***
+
+**Summary**: Let's examine the distribution  of the loans on basis of Female gender:
+
+* ***Phillipines*** tops with 151.984K for female category (96 %).
+* ***Kenya*** with a 49.791k gets the second spot in amount of loans borrowed by female borrowers(65.5 %).
+* ***Pakistan*** is an another country with 93 % of female participation.Amazing right?
+
+* Interestingly ***Combodia*** is a country where 80% of men are in for loans.
+
+***Why it would be?*** : 
+
+*  What is it with Phillipines,Pakistan,Kenya in common ? Maybe have to dig deeper?
+
+
+***
+
+### Anything to do with sector?
+```{r}
+library(dplyr)
+x<- data.frame(table(loans$sector[loans$borr == "female"]) )
+k<- data.frame(table(loans$sector))
+innerjoin_RM <- merge(x,k,by = "Var1")
+
+
+names_RM <- innerjoin_RM$Var1
+
+text <- round( (innerjoin_RM$Freq.x/ innerjoin_RM$Freq.y)*100,digits = 2)
+text <- paste(text, "%Female" )
+
+data <- data.frame(names_RM, innerjoin_RM$Freq.x, innerjoin_RM$Freq.y - innerjoin_RM$Freq.x)
+
+p <- plot_ly(data, x = ~names_RM, y = ~innerjoin_RM$Freq.x, type = 'bar', text = text ,name = 'Female') %>%
+  add_trace(y = ~innerjoin_RM$Freq.y - innerjoin_RM$Freq.x, name = 'Male') %>%
+  layout(yaxis = list(title = 'Count'), barmode = 'stack')
+p
+```
+
+
+
+***
+
+**Summary**: Let's examine the Sector with Gender:
+
+* Looks like ***Retail*** is being the preferred sector for women .
+* ***Food** and ***Arts*** are the ones that follows in. 
+* ***Agriculture*** is the sector which bags the first position in total borrowers.
+
+
+
+***Why it would be?*** : 
+
+*  ***Agriculture***,***Food***,***Retail*** are the topmost sectors where loans are being borrowed.
+*  Basic needs of every human being is water,food,shelter.What we have here resembles the same.
+
+
+***
+
+#####The regularities and irregularities of payback
+
+
+```{r}
+
+ k<- data.frame(table(loans$repayment_interval))
+
+
+p <- plot_ly(k, labels = ~Var1, values = ~Freq, type = 'pie') %>%
+  layout(
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+p
+```
+
+
+***
+
+**Summary**: Let's examine the repayment modes:
+
+* ***Monthly*** is the mode most number of borrower rely on to payback the loans(51%) .
+* An alarming 31% loans are being payed back in ***irregular*** intervals.
+
+
+
+***Why it would be?*** : 
+
+*  ***Monthly*** being the most preferred mode of payment is what we could have guessed
+*  But isn't it alarming of the 31% who pays back ***irregularly***? Are we losing something here? Which countries would fall in this category?
+* Any ideas of what really ***Bullet*** mode of payment means?
+
+
+***
+
+
+### Repayment Modes w.r.t Countries
+```{r}
+ p <- (loans %>% count(country, repayment_interval) %>%
+plot_ly(x = ~country, y = ~n, color = ~repayment_interval))
+p
+```
+
+***
+
+*  NB :Click on the repayment modes option for specific mode classification
+
+**Summary**: Repayment modes in countries :
+
+* ***Philippines*** with 144.954K is the largest competitor in irregular repayment mode.
+* ***Kenya*** is the country which tops in Monthly repayment mode.
+* Only ***Kenya*** uses Weekly mode for repayment.
+* In ***Bullet*** Mode Kenya ,Colombia,Nigeria tops the list.
+
+
+
+***
+
+
+
+### Monthly Repayment Modes
+```{r}
+
+table_term_month <- table(loans$country[loans$repayment_interval == "monthly"] )
+names_term_month <- row.names(table_term_month)
+
+
+data <- data.frame(names_term_month, table_term_month)
+
+p <- plot_ly(data, x = ~names_term_month, y = ~table_term_month, type = 'bar',
+        marker = list(color = 'rgb(158,202,225)',
+                      line = list(color = 'rgb(8,48,107)',
+                                  width = 1.5))) %>%
+  layout(title = "Monthly Repayment Analysis",
+         xaxis = list(title = ""),
+         yaxis = list(title = ""))
+p
+```
+
+***
+
+**Summary**: Monthly Repayment mode :
+
+* In ***Monthly*** mode, Kenya,ElSavdor,Cambodia are the countries which tops.
+
+
+
+***
+
+#### Bullet Repayment Mode
+
+  In banking and finance, a bullet loan is a loan where a payment of the entire principal of the loan, and sometimes the principal and interest, is due at the end of the loan term. Likewise for bullet bond. A bullet loan can be a mortgage, bond, note or any other type of credit.It is also sometimes known as EMI Free Loan.
+  
+```{r}
+table_term_month <- table(loans$country[loans$repayment_interval == "bullet"] )
+names_term_month <- row.names(table_term_month)
+
+
+data <- data.frame(names_term_month, table_term_month)
+
+p <- plot_ly(data, x = ~names_term_month, y = ~table_term_month, type = 'bar',
+        marker = list(color = 'rgb(158,202,225)',
+                      line = list(color = 'rgb(8,48,107)',
+                                  width = 1.5))) %>%
+  layout(title = "Bullet Repayment Analysis",
+         xaxis = list(title = ""),
+         yaxis = list(title = ""))
+p
+```
+
+***
+
+**Summary**: Monthly Repayment mode :
+
+* In ***Bullet*** mode, Kenya,Nigeria,Cambodia are the countries which tops.
+
+
+
+***
+# Partners country wise 
+```{r}
+ partners_country <- select(loans,c(8,11)) %>% unique() %>% group_by(country) %>% summarise(Total = n())
+
+library(nycflights13)
+oct_lax_flights <- flights %>%
+filter(month == 10, dest == "LAX")
+hchart(oct_lax_flights, "scatter", x = dep_delay, y = arr_delay, group = origin)
+ 
+```
+
+
+
+
+
+
+
+
+
+####Sector wise classification of loans based on top grossers
+```{r}
+top10 <- droplevels(tail(as.factor(loans$country),10))
+top10_loans <- loans[loans$country %in% top10,]
+top10_loans$country <- as.factor(top10_loans$country)
+top10_loans$sector <- as.factor(top10_loans$sector)
+
+ggplot(top10_loans, aes(country)) +
+  geom_bar(aes(fill=sector), width = 0.8, col='black') + theme(axis.text.x = element_text(angle=65, vjust=0.6))
+
+```
+
+
+
+
+
+
+####Cartographic Representation of the Top Grossers of Loans
+```{r}
+leaflet(loan_themes_region) %>% addProviderTiles("Esri.NatGeoWorldMap") %>%
+  addCircles(lng = ~lon, lat = ~lat,radius = ~(amount/10) ,
+             color = ~c("red"))  %>%
+  # controls
+  setView(lng=0, lat=0,zoom = 2) 
+```
+
+
+
+
+
+
+
+
+
+## Including Plots
+
+# Boxplots of loan amount in sectors
+```{r}
+
+
+loans %>% filter(currency == "USD") %>% filter(loan_amount < quantile(loan_amount, 0.99)) %>% select(sector, currency, loan_amount) -> loan_filtered
+
+ggplot(loan_filtered, aes(x=sector, y=loan_amount, col=sector)) + 
+  geom_boxplot() +
+  theme_bw() + coord_flip() + labs(x="Sector", y="Amount of  loans")
+```
+
+
+# Treemaps 
+
+## Tree map for population
+```{r}
+library(treemap)
+
+library(viridisLite)
+
+data(GNI2014)
+
+tm <- treemap(GNI2014, index = c("continent", "iso3"),
+              vSize = "population", vColor = "GNI",
+              type = "value", palette = viridis(6))
+
+```
+
+## Treemap based on amount and number of loan borrowed
+```{r}
+library(treemap)
+
+library(viridisLite)
+
+data(GNI2014)
+
+tm <- treemap(loan_themes_region, index = c("country", "ISO"),
+              vSize = "amount", vColor = "number",
+              type = "value", palette = viridis(6))
+
+
+```
+
+```{r}
+tm <- treemap(location, index = c("world_region", "ISO"),
+              vSize = "MPI", vColor = "MPI",
+              type = "value", palette = viridis(6))
+
+```
+
+
+
+## Amount distribution
+```{r}
+# leaflet(loan_themes_region) %>% addTiles() %>%
+#   addCircles(lng = ~lon, lat = ~lat,radius = ~(amount/10) ,
+#              color = ~c("blue"))
+  
+leaflet(loan_themes_region) %>% addTiles() %>%
+  addCircles(lng = ~lon, lat = ~lat,radius = ~(amount/10),popup =  ~ country, 
+             color = "DarkRed") %>%
+
+  # controls
+  setView(lng=center_lon, lat=center_lat, zoom=3)
+
+
+
+
+ 
+```
+
+## World Region
+```{r}
+hchart(location$world_region, colorByPoint = TRUE, name = "Countries")
+
+```
+
+
+
+```{r}
+loans %>%
+  group_by(country) %>%
+  summarise(Count = n()) %>%
+  arrange(desc(Count)) %>%
+  ungroup() %>%
+  mutate(country = reorder(country,Count)) %>%
+  head(10) %>%
+  
+  ggplot(aes(x = country,y = Count)) +
+  geom_bar(stat='identity',colour="white", fill = "dark green") +
+  geom_text(aes(x = country, y = 1, label = paste0("(",Count,")",sep="")),
+            hjust=0, vjust=.5, size = 4, colour = 'black',
+            fontface = 'bold') +
+  labs(x = 'Countries', 
+       y = 'Count', 
+       title = 'Countries and Countfor Africa ') +
+ 
+   theme_bw()
+  
+
+```
+
+
+```{r}
+center_lon = median(loans$lon,na.rm = TRUE)
+center_lat = median(loans$lat,na.rm = TRUE)
+
+
+leaflet(location) %>% addTiles() %>%
+  addCircles(lng = ~lon, lat = ~lat,radius = ~(amount/10) ,
+             color = "dark green")  %>%
+
+
+
+country_loans = location %>%
+  filter(str_detect(world_region,"Africa"))
+
+unique(loans$world_region)
+
+```
+
+
+
+```{r}
+data(unemployment)
+
+hcmap("countries/us/us-all-all", data = unemployment,
+      name = "Unemployment", value = "value", joinBy = c("hc-key", "code"),
+      borderColor = "transparent") %>%
+  hc_colorAxis(dataClasses = color_classes(c(seq(0, 10, by = 2), 50))) %>% 
+  hc_legend(layout = "vertical", align = "right",
+            floating = TRUE, valueDecimals = 0, valueSuffix = "%") 
+```
+
+-------------------------------------------------------------------------------------------------------
+
+
+# combining theme region and location
+```{r}
+themes_region_combined <- inner_join(loan_themes_region,location,by = c('country')) %>%
+  select(world_region,lat.x,lon.x,country,amount) %>%
+  rename (lat = lat.x) %>%
+    rename(lon = lon.x)
+
+```
+
+```{r}
+themes_region_combined %>%
+  filter(str_detect(world_region,"Africa"))%>%
+  group_by(country)%>%
+  summarise(count = n())%>%
+  arrange(desc(count))%>%
+  ungroup()%>%
+  mutate(country = c(country,count)) %>%
+  head(10)%>%
+  
+  ggplot(aes(x = country,y = Count)) +
+  geom_bar(stat='identity',colour="white", fill = "Dark blue") +
+  geom_text(aes(x = country, y = 1, label = paste0("(",Count,")",sep="")),
+            hjust=0, vjust=.5, size = 4, colour = 'black',
+            fontface = 'bold') +
+  labs(x = 'Countries', 
+       y = 'Count', 
+       title = 'Countries and Count') +
+    theme_bw()
+  
+
+
+
+
+```
+
+```{r}
+pal <- colorNumeric(
+  palette = colorRampPalette(c('green', 'red'))(length(location$MPI)), 
+  domain = location$MPI)
+
+regions_no_NA = location %>%
+  filter(!is.na(lon)) %>%
+  filter(!is.na(lat))
+
+center_lon = median(location$lon,na.rm = TRUE)
+center_lat = median(location$lat,na.rm = TRUE)
+
+leaflet(data = regions_no_NA) %>%
+  addTiles() %>%
+  addCircleMarkers(
+    lng =  ~ lon,
+    lat =  ~ lat,
+    radius = ~ MPI*10,
+    popup =  ~ country,
+    color =  ~ pal(MPI)
+  ) %>%
+  # controls
+  setView(lng=center_lon, lat=center_lat,zoom = 3) %>%
+  
+  addLegend("topleft", pal = pal, values = ~MPI,
+          title = "MPI Map",
+           opacity = 1)
+```
+
+```{r}
+
+
+pal <- colorNumeric(
+  palette = colorRampPalette(c('green', 'red'))(length(location$)), 
+  domain = location$MPI)
+
+regions_no_NA = location %>%
+  filter(!is.na(lon)) %>%
+  filter(!is.na(lat))
+
+center_lon = median(location$lon,na.rm = TRUE)
+center_lat = median(location$lat,na.rm = TRUE)
+
+leaflet(data = regions_no_NA) %>%
+  addTiles() %>%
+  addCircleMarkers(
+    lng =  ~ lon,
+    lat =  ~ lat,
+    radius = ~ MPI*10,
+    popup =  ~ country,
+    color =  ~ pal(MPI)
+  ) %>%
+  # controls
+  setView(lng=center_lon, lat=center_lat,zoom = 3) %>%
+  
+  addLegend("topleft", pal = pal, values = ~MPI,
+          title = "MPI Map",
+           opacity = 1)
+
+
+```
+
+
+
+## Countries based on MPI
+```{r}
+location %>% filter(!is.na(MPI)) %>%
+  #eliminate regions with wrong lat/lon
+  filter(lat>=-90 & lat<=90 & lon<=180 & lon>=-180) %>% ungroup() -> updated_location
+
+
+minMPI = min(updated_location$MPI)
+maxMPI = max(updated_location$MPI)
+
+updated_location$color = updated_location$MPI * 100
+
+bins <- c(0,  20, 40, 60, 80, 100)
+
+pal <- colorBin("Red", domain = updated_location$color, bins = bins)
+
+leaflet(data=updated_location) %>%
+  addTiles() %>%
+  addCircles(lat=updated_location$lat, lng=updated_location$lon, radius=12, color=~pal(updated_location$color),
+             popup= paste("<strong>Location Name: </strong>", updated_location$LocationName,
+                          "<br><br><strong>ISO: </strong>", updated_location$ISO,
+                          "<br><strong>Country: </strong>", updated_location$country,
+                          "<br><strong>Region: </strong>", updated_location$region,
+                          "<br><strong>World Region: </strong>", updated_location$region,
+                          "<br><strong>Multidimensional Poverty Index (MPI): </strong>", updated_location$MPI,
+                          "<br><strong>Geolocation: </strong>", updated_location$geo
+             )) %>%
+    addLegend("topright", pal = pal, 
+            values = c(minMPI, maxMPI),
+            title = "MPI",
+            labFormat = labelFormat(suffix = "%"),
+            opacity = 0.6
+            )
+```
+```{r}
+location %>% group_by(country) %>% summarise(nr = mean(MPI))  %>% ungroup() %>% top_n(20,nr) %>%
+  ggplot(aes(x = reorder(country,nr), y = nr)) +
+  geom_bar(stat="identity", fill="red") +
+  coord_flip() + theme_bw(base_size = 10)  +
+  labs(x ="Country", y = "MPI (average value)", title="MPI per country", subtitle="Averaged values")
+```
+
+```{r}
+location %>% filter(!is.na(MPI)) %>% group_by(world_region) %>% summarise(nr = mean(MPI))  %>% ungroup() %>% 
+  ggplot(aes(x = reorder(world_region,nr), y = nr)) +
+  geom_bar(stat="identity", fill="Blue") +
+  coord_flip() + theme_bw(base_size = 10)  +
+  labs(x ="Region", y = "MPI (average value)", title="MPI per World region", subtitle="Averaged values")
+```
+
+```{r}
+location %>% group_by(country) %>% summarise(nr = mean(MPI))  %>% top_n(20,nr) %>% ungroup() -> topCountries
+
+location %>% filter(country %in% topCountries$country) %>% ungroup() %>%
+
+ggplot(aes(x=reorder(country,MPI), y= MPI,  col=country)) + 
+  geom_boxplot() + guides(col=FALSE) +
+  theme_bw() + coord_flip() + labs(x="Country", y="MPI", col="Country",
+                                   title="Boxplot distribution of MPI",
+                                   subtitle="Grouped by country")
+```
+
+## Loans recieved in African countries
+```{r}
+  themes_region_combined %>%
+  filter(str_detect(world_region,"Africa")) %>%
+  group_by(country) %>%
+  summarise(Count = n()) %>%
+  arrange(desc(Count)) %>%
+  ungroup() %>%
+  mutate(country = reorder(country,Count)) %>%
+  head(10) %>%
+  
+  ggplot(aes(x = country,y = Count)) +
+  geom_bar(stat='identity',colour="white",fill = "DarkGreen") +
+  geom_text(aes(x = country, y = 1, label = paste0("(",Count,")",sep="")),
+            hjust=0, vjust=.5, size = 4, colour = 'black',
+            fontface = 'bold') +
+  labs(x = 'Countries', 
+       y = 'Count', 
+       title = 'Countries and Count') +
+  coord_flip() +
+   theme_bw()                
+
+```
+## Sectors where loans required
+```{r}
+Africa %>%
+  filter(!is.na(sector)) %>%
+  
+  group_by(sector) %>%
+  summarise(Count = n()) %>%
+  arrange(desc(Count)) %>%
+  ungroup() %>%
+  mutate(sector = reorder(sector,Count)) %>%
+  head(10) %>%
+  
+  ggplot(aes(x = sector,y = Count)) +
+  geom_bar(stat='identity',colour="white", fill = "LightBlue") +
+  geom_text(aes(x = sector, y = 1, label = paste0("(",Count,")",sep="")),
+            hjust=0, vjust=.5, size = 4, colour = 'black',
+            fontface = 'bold') +
+  labs(x = 'Sector', 
+       y = 'Count', 
+       title = 'Sector and Count') +
+  coord_flip() +
+   theme_bw()
+```
+
+## USe of loans
+```{r}
+Africa <- location %>%
+  select(country,world_region) %>%
+  unique() %>%
+  inner_join(loans) %>%
+  filter(str_detect(world_region,"Africa"))
+
+Africa %>%
+  filter(!is.na(use)) %>%
+  
+  group_by(use) %>%
+  summarise(Count = n()) %>%
+  arrange(desc(Count)) %>%
+  ungroup() %>%
+  mutate(use = reorder(use,Count)) %>%
+  head(10) %>%
+  
+  ggplot(aes(x = use,y = Count)) +
+  geom_bar(stat='identity',colour="white", fill = "tomato") +
+  geom_text(aes(x = use, y = 1, label = paste0("(",Count,")",sep="")),
+            hjust=0, vjust=.5, size = 4, colour = 'black',
+            fontface = 'bold') +
+  labs(x = 'Use of Loans', 
+       y = 'Count', 
+       title = 'Use of Loans and Count') +
+     coord_flip() +
+     theme_bw() 
+```
+
+
+
+```{r}
+
+countries_and_continents = countries_and_continents %>%
+  select(name,Continent)
+
+mpi_national_continent = inner_join(MPI_national,countries_and_continents,by =c('Country'= 'name'))
+
+poor_countries_rural <- mpi_national_continent %>%
+  filter(Continent == 'AF') %>%
+  rename(MPIRural = `MPI Rural`) %>%
+  arrange(desc(MPIRural)) %>%
+  head(15) %>%
+  select(Country,MPIRural)
+
+treemap(poor_countries_rural, 
+        index="Country", 
+        vSize = "MPIRural",  
+        title="Poorest Countries Rural Perspective", 
+        palette = "RdBu",
+        fontsize.title = 14 
+)
+
+```
+
+```{r}
+p <- plot_ly(
+  mpi_national_continent, x = ~`Headcount Ratio Urban`, y = ~`Intensity of Deprivation Urban`,
+  text = ~paste("Country: ", Country),
+  color = ~`Headcount Ratio Urban`, size = ~`Headcount Ratio Urban`
+)
+p
+```
+
+
+```{r}
+conflicts <- african_conflicts %>%
+  group_by(COUNTRY) %>%
+  summarise(Count = n()) %>%
+  arrange(desc(Count)) %>%
+  ungroup() %>%
+  mutate(COUNTRY = reorder(COUNTRY,Count)) %>%
+  head(10)
+
+conflicts %>%
+  
+  ggplot(aes(x = COUNTRY,y = Count)) +
+  geom_bar(stat='identity',colour="white", fill = c("Darkred")) +
+  geom_text(aes(x = COUNTRY, y = 1, label = paste0("(",Count,")",sep="")),
+            hjust=0, vjust=.5, size = 4, colour = 'black',
+            fontface = 'bold') +
+  labs(x = 'Country', 
+       y = 'Count', 
+       title = 'Conflict Countries and Count') +
+  coord_flip() +
+  theme_bw()
+```
+```{r}
+country_loans = loan_themes_region %>% 
+  filter(country == "Kenya") %>%
+  rename (themeType = `Loan Theme Type`) 
+
+
+center_lon = median(country_loans$lon,na.rm = TRUE)
+center_lat = median(country_loans$lat,na.rm = TRUE)
+
+
+leaflet(country_loans) %>% addTiles() %>%
+  addCircles(lng = ~lon, lat = ~lat,radius = ~(amount/10) ,
+             color = ~c("blue"))  %>%
+  # controls
+  setView(lng=center_lon, lat=center_lat,zoom = 5) 
+```
+
+```{r}
+keyword = "Battle"
+
+BattleData = african_conflicts %>% 
+  filter(!is.na(LATITUDE)) %>%
+  filter(!is.na(LONGITUDE)) %>%
+  filter(str_detect(EVENT_TYPE,keyword) )
+
+BattleData1 = BattleData %>% filter(YEAR >= 2014)
+
+center_lon = median(BattleData$LONGITUDE)
+center_lat = median(BattleData$LATITUDE)
+
+leaflet(BattleData1) %>% addTiles() %>%
+  addCircles(lng = ~LONGITUDE, lat = ~LATITUDE,radius = ~(FATALITIES), 
+             color = "DarkRed")  %>%
+  # controls
+  setView(lng=center_lon, lat=center_lat, zoom=3)
+```
+
+```{r}
+library(plotly)
+
+d <- diamonds[sample(nrow(diamonds), 1000), ]
+
+ p <- plot_ly(
+  d, x = ~carat, y = ~price,
+  # Hover text:
+  text = ~paste("Price: ", price, '$<br>Cut:', cut),
+  color = ~carat, size = ~carat
+)
+
+ AF <- mpi_national_continent%>% filter(Continent == "AF")
+
+p <- plot_ly(
+  AF, x = ~`Headcount Ratio Urban`, y = ~`Intensity of Deprivation Urban`,
+  text = ~paste("Country: ", Country),
+  color = ~`Headcount Ratio Urban`, size = ~`Headcount Ratio Urban`
+)
+p
+
+
+ AF <- mpi_national_continent%>% filter(Continent == "AF")
+
+p <- plot_ly(
+  AF, x = ~`Headcount Ratio Urban`, y = ~`Intensity of Deprivation Urban`,
+  text = ~paste("Country: ", Country),
+  color = ~`Headcount Ratio Urban`, size = ~`Headcount Ratio Urban`
+)
+p
+```
+
+```{r}
+Headcount_Urban <- mpi_national_continent %>%
+  group_by(Country) %>%
+  summarise(Count = `Headcount Ratio Urban`) %>%
+  arrange(desc(Count)) %>%
+  ungroup() %>%
+  mutate(Country = reorder(Country,Count)) %>%
+  head(10)
+
+Headcount_Urban %>%
+  
+  ggplot(aes(x = Country,y = Count)) +
+  geom_bar(stat='identity',colour="white", fill = c("tomato")) +
+  geom_text(aes(x = Country, y = 1, label = paste0("(",Count,")",sep="")),
+            hjust=0, vjust=.5, size = 4, colour = 'black',
+            fontface = 'bold') +
+  labs(x = 'Country', 
+       y = 'Count', 
+       title = 'Ratio of Poor people in Urban') +
+  coord_flip() +
+  theme_bw()
+```
+
+## Regions in kenya 
+
+```{r}
+
+
+  loans %>%
+  filter(country == "Kenya") %>%
+  group_by(region) %>%
+  summarise(Count = n()) %>%
+  arrange(desc(Count)) %>%
+  ungroup() %>%
+  mutate(region = reorder(region,Count)) %>%
+  head(10) %>%
+  
+  ggplot(aes(x = region,y = Count)) +
+  geom_bar(stat='identity',colour="white",fill = "DarkGreen") +
+  geom_text(aes(x = region, y = 1, label = paste0("(",Count,")",sep="")),
+            hjust=0, vjust=.5, size = 4, colour = 'black',
+            fontface = 'bold') +
+  labs(x = 'Regions', 
+       y = 'Count', 
+       title = 'Regions in Kenya and Count') +
+  coord_flip() +
+   theme_bw() 
+  
+```
+
+
+
+```{r}
+
+loans %>%
+  filter(country == "Kenya") %>%
+  group_by(sector) %>%
+  summarise(Count = n()) %>%
+  arrange(desc(Count)) %>%
+  ungroup() %>%
+  mutate(sector = reorder(sector,Count)) %>%
+  head(10) %>%
+  
+  ggplot(aes(x = sector,y = Count)) +
+  geom_bar(stat='identity',colour="white",fill = "DarkGreen") +
+  geom_text(aes(x = sector, y = 1, label = paste0("(",Count,")",sep="")),
+            hjust=0, vjust=.5, size = 4, colour = 'black',
+            fontface = 'bold') +
+  labs(x = 'sectors', 
+       y = 'Count', 
+       title = 'sectors in Kenya and Count') +
+  coord_flip() +
+   theme_bw() 
+
+```
+
+```{r}
+
+loans %>%
+  filter(country == "Kenya") %>%
+  group_by(activity) %>%
+  summarise(Count = n()) %>%
+  arrange(desc(Count)) %>%
+  ungroup() %>%
+  mutate(activity = reorder(activity,Count)) %>%
+  head(10) %>%
+  
+  ggplot(aes(x = activity,y = Count)) +
+  geom_bar(stat='identity',colour="white",fill = "DarkGreen") +
+  geom_text(aes(x = activity, y = 1, label = paste0("(",Count,")",sep="")),
+            hjust=0, vjust=.5, size = 4, colour = 'black',
+            fontface = 'bold') +
+  labs(x = 'Activity', 
+       y = 'Count', 
+       title = 'Activities in Kenya and Count') +
+  coord_flip() +
+   theme_bw() 
+
+```
+
+```{r}
+
+loan_themes_region %>%
+  filter(country == "Kenya") %>%
+  group_by(loan_amount) %>%
+  summarise(Count = n()) %>%
+  arrange(desc(Count)) %>%
+  ungroup() %>%
+  mutate(`Field Partner Name` = reorder(`Field Partner Name`,Count)) %>%
+  head(10) %>%
+  
+  ggplot(aes(x = `Field Partner Name`,y = Count)) +
+  geom_bar(stat='identity',colour="white",fill = "DarkGreen") +
+  geom_text(aes(x = `Field Partner Name`, y = 1, label = paste0("(",Count,")",sep="")),
+            hjust=0, vjust=.5, size = 4, colour = 'black',
+            fontface = 'bold') +
+  labs(x = '`Field Partner Name`s', 
+       y = 'Count', 
+       title = 'Field Partners in Kenya and Count') +
+  coord_flip() +
+   theme_bw() 
+
+```
+```{r}
+
+loan_themes_region %>%
+  filter(country == "Kenya") %>%
+  group_by(amount) %>%
+  summarise(Count = n()) %>%
+  arrange(desc(Count)) %>%
+  ungroup() %>%
+  mutate(amount = reorder(amount,Count)) %>%
+  head(10) %>%
+  
+  ggplot(aes(x = amount,y = Count)) +
+  geom_bar(stat='identity',colour="white",fill = "DarkGreen") +
+  geom_text(aes(x = amount, y = 1, label = paste0("(",Count,")",sep="")),
+            hjust=0, vjust=.5, size = 4, colour = 'black',
+            fontface = 'bold') +
+  labs(x = 'amount', 
+       y = 'Count', 
+       title = 'Amount') +
+  coord_flip() +
+   theme_bw() 
+```
+```{r}
+pal <- colorNumeric(
+  palette = colorRampPalette(c('green', 'red'))(length(location$MPI)), 
+  domain = location$MPI)
+
+regions_no_NA = location %>%filter(country == "Kenya") %>%
+  filter(!is.na(lon)) %>%
+  filter(!is.na(lat))
+
+center_lon = median(location$lon,na.rm = TRUE)
+center_lat = median(location$lat,na.rm = TRUE)
+
+leaflet(data = regions_no_NA) %>%
+  addTiles() %>%
+  addCircleMarkers(
+    lng =  ~ lon,
+    lat =  ~ lat,
+    radius = ~ MPI*10,
+    popup =  ~ country,
+    color =  ~ pal(MPI)
+  ) %>%
+  # controls
+  setView(lng=center_lon, lat=center_lat,zoom = 3) %>%
+  
+  addLegend("topleft", pal = pal, values = ~MPI,
+          title = "MPI Map",
+           opacity = 1)
+```
+#MPI per region
+
+```{r}
+x <- loan_themes_region %>% filter(country == "Kenya")
+
+leaflet(x)  %>%addTiles() %>%
+  addCircles(lng = ~lon, lat = ~lat,radius = ~(amount/10) ,
+             color = ~c("blue"))
+```
+```{r}
+location %>% filter(country == "Kenya") %>% group_by(region) %>% summarise(nr = mean(MPI))  %>% ungroup() %>% top_n(20,nr) %>%
+  ggplot(aes(x = reorder(region,nr), y = nr)) +
+  geom_bar(stat="identity", fill="red") +
+  coord_flip() + theme_bw(base_size = 10)  +
+  labs(x ="Refion", y = "MPI (average value)", title="MPI per Region", subtitle="Averaged values")
+
+```
+
+```{r}
+loans %>%
+  filter(country == "Somalia") %>%
+  group_by(region) %>%
+  summarise(Count = n()) %>%
+  arrange(desc(Count)) %>%
+  ungroup() %>%
+  mutate(region = reorder(region,Count)) %>%
+  head(10) %>%
+  
+  ggplot(aes(x = region,y = Count)) +
+  geom_bar(stat='identity',colour="white",fill = "Tomato") +
+  geom_text(aes(x = region, y = 1, label = paste0("(",Count,")",sep="")),
+            hjust=0, vjust=.5, size = 4, colour = 'black',
+            fontface = 'bold') +
+  labs(x = 'Regions', 
+       y = 'Count', 
+       title = 'Regions in Somalia and Count') +
+  coord_flip() +
+   theme_bw() 
+
+```
+```{r}
+loans %>%
+  filter(country == "Somalia") %>%
+  group_by(sector) %>%
+  summarise(Count = n()) %>%
+  arrange(desc(Count)) %>%
+  ungroup() %>%
+  mutate(sector = reorder(sector,Count)) %>%
+  head(10) %>%
+  
+  ggplot(aes(x = sector,y = Count)) +
+  geom_bar(stat='identity',colour="white",fill = "Tomato") +
+  geom_text(aes(x = sector, y = 1, label = paste0("(",Count,")",sep="")),
+            hjust=0, vjust=.5, size = 4, colour = 'black',
+            fontface = 'bold') +
+  labs(x = 'sectors', 
+       y = 'Count', 
+       title = 'sectors in Somalia and Count') +
+  coord_flip() +
+   theme_bw() 
+
+```
+```{r}
+loans %>%
+  filter(country == "Somalia") %>%
+  group_by(activity) %>%
+  summarise(Count = n()) %>%
+  arrange(desc(Count)) %>%
+  ungroup() %>%
+  mutate(activity = reorder(activity,Count)) %>%
+  head(10) %>%
+  
+  ggplot(aes(x = activity,y = Count)) +
+  geom_bar(stat='identity',colour="white",fill = "Tomato") +
+  geom_text(aes(x = activity, y = 1, label = paste0("(",Count,")",sep="")),
+            hjust=0, vjust=.5, size = 4, colour = 'black',
+            fontface = 'bold') +
+  labs(x = 'Activity', 
+       y = 'Count', 
+       title = 'Activities in Somalia and Count') +
+  coord_flip() +
+   theme_bw() 
+
+```
+```{r}
+loan_themes_region %>%
+  filter(country == "Somalia") %>%
+  group_by(`Field Partner Name`) %>%
+  summarise(Count = n()) %>%
+  arrange(desc(Count)) %>%
+  ungroup() %>%
+  mutate(`Field Partner Name` = reorder(`Field Partner Name`,Count)) %>%
+  head(10) %>%
+  
+  ggplot(aes(x = `Field Partner Name`,y = Count)) +
+  geom_bar(stat='identity',colour="white",fill = "Tomato") +
+  geom_text(aes(x = `Field Partner Name`, y = 1, label = paste0("(",Count,")",sep="")),
+            hjust=0, vjust=.5, size = 4, colour = 'black',
+            fontface = 'bold') +
+  labs(x = '`Field Partner Name`s', 
+       y = 'Count', 
+       title = 'Field Partners in Somalia and Count') +
+  coord_flip() +
+   theme_bw() 
+```
+

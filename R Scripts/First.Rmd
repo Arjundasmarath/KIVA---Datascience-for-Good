@@ -1,0 +1,301 @@
+---
+title: "KIVA ANALYSIS"
+output: html_notebook
+---
+***
+***
+####**KIVA** - AN INTRODUCTION
+
+
+   Kiva Microfunds (commonly known by its domain name, Kiva.org) is a 501(c)(3) non-profit organization that allows people to lend money via the Internet to low-income entrepreneurs and students in over 80 countries. Kiva's mission is "to connect people through lending to alleviate poverty.Kiva operates two models-Kiva.org and KivaZip.org. Kiva.org relies on a network of field partners to administer the loans on the ground.Kiva is headquartered in San Francisco, California.
+
+***
+***
+#### OBJECTIVE
+
+Estimation of Welfare Level of Borrowers Categorized on the Basis of Areas Classified By Shared Economic And Demographic Characterstics
+
+
+***
+***
+
+#### OBJECTIVE OF NOTEBOOK
+
+  An analysis of the data provided by **KIVA** encompassing detailed discussion of ideas for aditional data sources, by supportive usage of graphs and plots to make the results more interactive.
+
+***
+***
+ 
+#### A Note from a Beginner
+
+  As a new member in the community of **Kaggle** this is my first Kernel. While best efforts have been put to avoid any form of misinterpretation of data,inadvertent errors might have crept in. Constructive criticisms and honest reviews are widely welcomed.  
+
+***
+***          
+
+
+#### Libraries 
+
+```{r}
+library(readr)
+
+packages <- c("data.table", "ggplot2", "dplyr", "mosaic", "magrittr", 
+              "grid", "cowplot", "gridExtra", "corrplot",
+             "RColorBrewer", "gmodels")
+lapply(packages, require, character.only = T)
+library(wordcloud) #  wordcloud
+library(DT)       # table format display of data
+library(leaflet) # maps
+
+library(igraph) #  graphs
+library(plotly)
+
+```
+
+
+#### Loading the dataset
+
+```{r}
+loans <- read_csv("kiva_loans.csv")
+location <- read_csv("kiva_mpi_region_locations.csv")
+loan_theme <-  read_csv("loan_theme_ids.csv")
+loan_themes_region <- read_csv("loan_themes_by_region.csv")
+
+ 
+```
+
+#### Null Value Identifications
+
+ To avoid discrepancies in the analysis of data,identification of null values in the dataset is necessary.The table below shows the attributes with the percentage of null values it contains.
+
+<br>
+
+#### Null Value identifications in loans
+
+
+```{r}
+x<- colMeans(is.na(loans))
+distribution<- x[x>0]
+t<-data.frame(distribution)
+
+colnames(t) <- "Percentage"
+t$Percentage <- t$Percentage *100
+
+    d = data.frame(
+      t,
+      stringsAsFactors = TRUE
+    )
+    dt <- datatable(d, filter = 'bottom', options = list(pageLength = 8))
+    dt
+    
+
+```
+
+#### Null Value identification in loan_theme
+
+```{r}
+x<- colMeans(is.na(loan_theme))
+distribution<- x[x>0]
+t<-data.frame(distribution)
+
+colnames(t) <- "Percentage"
+t$Percentage <- t$Percentage *100
+
+require('DT')
+    d = data.frame(
+      t,
+      stringsAsFactors = TRUE
+    )
+    dt <- datatable(d, filter = 'bottom', options = list(pageLength = 8))
+    dt
+    
+```
+
+####Null Values in Location
+
+```{r}
+x<- colMeans(is.na(location))
+distribution<- x[x>0]
+t<-data.frame(distribution)
+
+colnames(t) <- "Percentage"
+t$Percentage <- t$Percentage *100
+
+require('DT')
+    d = data.frame(
+      t,
+      stringsAsFactors = TRUE
+    )
+    dt <- datatable(d, filter = 'bottom', options = list(pageLength = 8))
+    dt
+    
+```
+
+#### The Grant of Loans - Country Specific
+
+```{r}
+loans %>%
+  group_by(country) %>%
+  summarise(Count = n()) %>%
+  arrange(desc(Count)) %>%
+  ungroup() %>% 
+  mutate(country = reorder(country,Count)) %>%
+  head(10) %>%
+    
+ ggplot(aes(x = country,y = Count)) +
+  geom_bar(stat='identity',colour="white",fill = " dark green") +
+  geom_text(aes(x = country, y = 1, label = paste0("(",Count,")",sep="")),
+            hjust=0, vjust=.5, size = 4, colour = 'black',
+            fontface = 'bold') +
+  labs(x = 'country', 
+       y = 'Count' 
+       ) +
+ 
+   theme_light()
+
+
+  
+
+
+```
+
+ As a result of the analysis it is evident that **Phillipines** is the country which ranks highest among the brrower of loans.
+ 
+***
+
+***
+
+####Sector Wise Analysis on the Basis of Amount of Loans
+
+```{r somevar22,echo=FALSE}
+table_loan_sector <- table(loans$sector )
+names_loan_sector <- row.names(table_loan_sector)
+
+m = list(
+  l = 200,
+  r = 40,
+  b = 100,
+  t = 50,
+  pad = 10
+) 
+
+data <- data.frame(names_loan_sector, table_loan_sector)
+
+p <- plot_ly(data, x = ~names_loan_sector, y = ~table_loan_sector, type = 'bar',
+        marker = list(color = 'rgb(158,202,225)',
+                      line = list(color = 'rgb(108,48,107)',
+                                  width = 1.5))) %>%
+  layout(title = "Sector  Analysis",
+         xaxis = list(title = ""),
+         yaxis = list(title = ""))
+p %>% layout(autosize = F, margin = m)
+
+```
+
+From the given dataset the sectors of **Agriculture** and **Food** hold the top positions in terms of borrowing of loans.
+
+***
+
+***
+
+####Analysis of Loans - Female Borrowers Based on Regions. 
+
+```{r}
+ loans$borr <- if_else((loans$borrower_genders == "female"), "female","male")
+ k<- data.frame(table(loans$country[loans$borr == "female"]))
+
+
+p <- plot_ly(k, labels = ~Var1, values = ~Freq, type = 'pie') %>%
+  layout(
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+p
+```
+
+
+**Phillipines** and **Kenya** are among the leading countries on basis of female borrowers of loans.
+
+***
+
+***
+
+####The regularities and irregularities of payback
+
+####Irregular Payment Modes
+
+```{r}
+
+ k<- data.frame(table(loans$country[loans$repayment_interval == "irregular"]))
+
+
+p <- plot_ly(k, labels = ~Var1, values = ~Freq, type = 'pie') %>%
+  layout(
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+p
+```
+
+**Phillipines** scores high when the aspect of irregular payment is in question
+
+***
+
+***
+
+####Monthly Repayment Modes
+```{r}
+
+ k<- data.frame(table(loans$country[loans$repayment_interval == "monthly"]))
+
+
+p <- plot_ly(k, labels = ~Var1, values = ~Freq, type = 'pie') %>%
+  layout(
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+p
+```
+
+**Cambodia** and **Kenya** among the top countries who pays ack in monthly repayment mode.
+
+***
+
+***
+
+#### Bullet Repayment Mode
+
+  In banking and finance, a bullet loan is a loan where a payment of the entire principal of the loan, and sometimes the principal and interest, is due at the end of the loan term. Likewise for bullet bond. A bullet loan can be a mortgage, bond, note or any other type of credit.It is also sometimes known as EMI Free Loan.
+  
+```{r}
+ k<- data.frame(table(loans$country[loans$repayment_interval == "bullet"]))
+
+
+p <- plot_ly(k, labels = ~Var1, values = ~Freq, type = 'pie') %>%
+  layout(
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+p
+```
+
+**Colombia** and **Nigeria** which doesnot feature anywhere else ends up as the top players in this list.
+
+####Sector wise classification of loans based on top grossers
+```{r}
+top10 <- droplevels(tail(as.factor(loans$country),10))
+top10_loans <- loans[loans$country %in% top10,]
+top10_loans$country <- as.factor(top10_loans$country)
+top10_loans$sector <- as.factor(top10_loans$sector)
+
+ggplot(top10_loans, aes(country)) +
+  geom_bar(aes(fill=sector), width = 0.8, col='black') + theme(axis.text.x = element_text(angle=65, vjust=0.6))
+
+```
+
+
+####Cartographic Representation of the Top Grossers of Loans
+```{r}
+leaflet(loan_themes_region) %>% addProviderTiles("Esri.NatGeoWorldMap") %>%
+  addCircles(lng = ~lon, lat = ~lat,radius = ~(amount/10) ,
+             color = ~c("red"))  %>%
+  # controls
+  setView(lng=0, lat=0,zoom = 2) 
+```
+##More to come .... Stay tuned
